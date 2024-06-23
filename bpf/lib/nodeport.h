@@ -933,9 +933,14 @@ nodeport_rev_dnat_ingress_ipv6(struct __ctx_buff *ctx, struct trace_ctx *trace,
 		ret = ipv6_l3(ctx, ETH_HLEN, NULL, NULL, METRIC_EGRESS);
 		if (unlikely(ret != CTX_ACT_OK))
 			return ret;
-
-		ret = lb6_rev_nat(ctx, l4_off, ct_state.rev_nat_index,
-				  &tuple);
+#ifdef ENABLE_DSR_EXTERNAL
+		if (ct_state.dsr_external) {
+            ret = lb6_rev_dsr(ctx, l4_off, &ct_state.dsr6, &tuple);
+		} else
+#endif
+		{
+		    ret = lb6_rev_nat(ctx, l4_off, ct_state.rev_nat_index, &tuple);
+		}
 		if (IS_ERR(ret))
 			return ret;
 		if (!revalidate_data(ctx, &data, &data_end, &ip6))
@@ -1262,7 +1267,8 @@ static __always_inline int nodeport_svc_lb6(struct __ctx_buff *ctx,
 					    int l3_off,
 					    int l4_off,
 					    __u32 src_sec_identity __maybe_unused,
-					    __s8 *ext_err)
+					    __s8 *ext_err,
+                        bool vip_found __maybe_unused)
 {
 	const bool skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;
 	struct ct_state ct_state_svc = {};
@@ -1323,6 +1329,15 @@ static __always_inline int nodeport_svc_lb6(struct __ctx_buff *ctx,
 		case CT_NEW:
 			ct_state.src_sec_id = WORLD_IPV6_ID;
 			ct_state.node_port = 1;
+#ifdef ENABLE_DSR_EXTERNAL
+            ct_state.dsr_external = vip_found;
+            if (ct_state.dsr_external) {
+                ipv6_addr_copy(&ct_state.dsr6.address, &tuple.daddr);
+                ct_state.dsr6.port = key.dport;
+            }
+#else
+			ct_state.dsr_external = 0;
+#endif
 #ifndef HAVE_FIB_IFINDEX
 			ct_state.ifindex = (__u16)NATIVE_DEV_IFINDEX;
 #endif
@@ -1395,12 +1410,14 @@ static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,
 	bool is_svc_proto __maybe_unused = true;
 	int ret, l3_off = ETH_HLEN, l4_off;
 	struct ipv6_ct_tuple tuple __align_stack_8 = {};
+	union v6addr external_vip = {};
 	struct lb6_service *svc;
 	struct lb6_key key = {};
+	bool vip_found = false;
 
 	cilium_capture_in(ctx);
 
-	ret = lb6_extract_tuple(ctx, ip6, ETH_HLEN, &l4_off, &tuple);
+	ret = lb6_extract_tuple_and_vip(ctx, ip6, ETH_HLEN, &l4_off, &tuple, &external_vip, &vip_found);
 	if (IS_ERR(ret)) {
 		if (ret == DROP_UNSUPP_SERVICE_PROTO) {
 			is_svc_proto = false;
@@ -1417,8 +1434,19 @@ static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,
 
 	svc = lb6_lookup_service(&key, false);
 	if (svc) {
+#ifdef ENABLE_DSR_EXTERNAL
+        if (vip_found) {
+            if (ctx_adjust_hroom(ctx, -(int)sizeof(*ip6),
+                         BPF_ADJ_ROOM_MAC,
+                         BPF_F_ADJ_ROOM_FIXED_GSO))
+                return DROP_UNSUPP_SERVICE_PROTO;
+            ipv6_addr_copy(&tuple.daddr, &external_vip);
+            l4_off -= sizeof(*ip6);
+        }
+#endif
+
 		return nodeport_svc_lb6(ctx, &tuple, svc, &key, ip6, l3_off,
-					l4_off, src_sec_identity, ext_err);
+					l4_off, src_sec_identity, ext_err, vip_found);
 	} else {
 skip_service_lookup:
 #ifdef ENABLE_NAT_46X64_GATEWAY
@@ -2442,8 +2470,15 @@ nodeport_rev_dnat_ingress_ipv4(struct __ctx_buff *ctx, struct trace_ctx *trace,
 			      CT_ENTRY_NODEPORT, &ct_state, &trace->monitor);
 	if (ret == CT_REPLY) {
 		trace->reason = TRACE_REASON_CT_REPLY;
-		ret = lb4_rev_nat(ctx, l3_off, l4_off, ct_state.rev_nat_index, false,
-				  &tuple, has_l4_header);
+#ifdef ENABLE_DSR_EXTERNAL
+        if (ct_state.dsr_external) {
+            ret = lb4_rev_dsr(ctx, l3_off, l4_off, &ct_state.dsr4, false, &tuple, has_l4_header);
+        } else
+#endif
+        {
+            ret = lb4_rev_nat(ctx, l3_off, l4_off, ct_state.rev_nat_index, false, &tuple, has_l4_header);
+        }
+
 		if (IS_ERR(ret))
 			return ret;
 		if (!revalidate_data(ctx, &data, &data_end, &ip4))
@@ -2776,7 +2811,8 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 					    bool has_l4_header,
 					    int l4_off,
 					    __u32 src_sec_identity,
-					    __s8 *ext_err)
+					    __s8 *ext_err,
+					    bool vip_found __maybe_unused)
 {
 	const bool skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;
 	bool is_fragment = ipv4_is_fragment(ip4);
@@ -2868,6 +2904,15 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 		case CT_NEW:
 			ct_state.src_sec_id = src_sec_identity;
 			ct_state.node_port = 1;
+#ifdef ENABLE_DSR_EXTERNAL
+            ct_state.dsr_external = vip_found;
+            if (ct_state.dsr_external) {
+                ct_state.dsr4.address = tuple.daddr;
+                ct_state.dsr4.port = key.dport;
+            }
+#else
+			ct_state.dsr_external = 0;
+#endif
 #ifndef HAVE_FIB_IFINDEX
 			ct_state.ifindex = (__u16)NATIVE_DEV_IFINDEX;
 #endif
@@ -2932,13 +2977,15 @@ static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,
 	bool has_l4_header = ipv4_has_l4_header(ip4);
 	struct ipv4_ct_tuple tuple = {};
 	bool is_svc_proto = true;
+	bool vip_found = false;
 	struct lb4_service *svc;
 	struct lb4_key key = {};
+	__be32 external_vip = 0;
 	int ret, l4_off;
 
 	cilium_capture_in(ctx);
 
-	ret = lb4_extract_tuple(ctx, ip4, l3_off, &l4_off, &tuple);
+	ret = lb4_extract_tuple_and_vip(ctx, ip4, l3_off, &l4_off, &tuple, &external_vip, &vip_found);
 	if (IS_ERR(ret)) {
 		if (ret == DROP_UNSUPP_SERVICE_PROTO) {
 			is_svc_proto = false;
@@ -2955,9 +3002,20 @@ static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,
 
 	svc = lb4_lookup_service(&key, false);
 	if (svc) {
+#ifdef ENABLE_DSR_EXTERNAL
+        if (vip_found) {
+            if (ctx_adjust_hroom(ctx, -(int)sizeof(*ip4),
+                         BPF_ADJ_ROOM_MAC,
+                         BPF_F_ADJ_ROOM_FIXED_GSO))
+                return DROP_UNSUPP_SERVICE_PROTO;
+            tuple.daddr = external_vip;
+            l4_off -= sizeof(*ip4);
+        }
+#endif
+
 		return nodeport_svc_lb4(ctx, &tuple, svc, &key, ip4, l3_off,
 					has_l4_header, l4_off,
-					src_sec_identity, ext_err);
+					src_sec_identity, ext_err, vip_found);
 	} else {
 skip_service_lookup:
 #ifdef ENABLE_NAT_46X64_GATEWAY

@@ -1455,7 +1455,7 @@ lb4_xlate(struct __ctx_buff *ctx, __be32 *new_saddr __maybe_unused,
 		return DROP_READ_ERROR;
 	ret = ctx_store_bytes(ctx, l3_off + offsetof(struct iphdr, daddr),
 			      new_daddr, 4, 0);
-	if (ret < 0)
+	if (unlikely(ret < 0))
 		return DROP_WRITE_ERROR;
 
 	sum = csum_diff(&old_daddr, 4, new_daddr, 4, 0);

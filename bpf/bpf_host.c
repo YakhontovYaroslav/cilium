@@ -54,8 +54,9 @@
 #include "lib/encrypt.h"
 #include "lib/wireguard.h"
 #include "lib/vxlan.h"
+#include "lib/ipip_termination.h"
 
- #define host_egress_policy_hook(ctx, src_sec_identity, ext_err) CTX_ACT_OK
+#define host_egress_policy_hook(ctx, src_sec_identity, ext_err) CTX_ACT_OK
 
 /* Bit 0 is skipped for robustness, as it's used in some places to indicate from_host itself. */
 #define FROM_HOST_FLAG_NEED_HOSTFW (1 << 1)
@@ -1314,6 +1315,13 @@ int cil_from_netdev(struct __ctx_buff *ctx)
 #endif /* ENABLE_HIGH_SCALE_IPCACHE */
 
 	return handle_netdev(ctx, false);
+
+#ifdef ENABLE_IPIP_TERMINATION
+	ret = decap_ipip(ctx);
+	if (IS_ERR(ret)) {
+		goto drop_err;
+	}
+#endif
 
 drop_err:
 	return send_drop_notify_error(ctx, src_id, ret, CTX_ACT_DROP, METRIC_INGRESS);

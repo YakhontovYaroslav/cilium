@@ -1267,7 +1267,8 @@ static __always_inline int nodeport_svc_lb6(struct __ctx_buff *ctx,
 					    int l4_off,
 					    __u32 src_sec_identity __maybe_unused,
 					    __s8 *ext_err,
-                        bool vip_found __maybe_unused)
+                        bool vip_found __maybe_unused,
+                        union v6addr *external_vip __maybe_unused)
 {
 	const bool skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;
 	struct ct_state ct_state_svc = {};
@@ -1281,8 +1282,18 @@ static __always_inline int nodeport_svc_lb6(struct __ctx_buff *ctx,
 	if (!lb6_svc_is_routable(svc))
 		return DROP_IS_CLUSTER_IP;
 
+#ifdef ENABLE_DSR_EXTERNAL
+		if (vip_found) {
+			if (ctx_adjust_hroom(ctx, -(int)sizeof(*ip6),
+					     BPF_ADJ_ROOM_MAC,
+					     BPF_F_ADJ_ROOM_FIXED_GSO))
+				return DROP_UNSUPP_SERVICE_PROTO;
+			ipv6_addr_copy(&tuple->daddr, external_vip);
+			l4_off -= sizeof(*ip6);
+		}
+#endif
 #if defined(ENABLE_L7_LB)
-	if (lb6_svc_is_l7loadbalancer(svc) && svc->l7_lb_proxy_port > 0) {
+	if (lb6_svc_is_l7loadbalancer(svc) && svc->l7_lb_proxy_port > 0 && !vip_found) {
 		if (ctx_is_xdp())
 			return CTX_ACT_OK;
 
@@ -1431,19 +1442,8 @@ static __always_inline int nodeport_lb6(struct __ctx_buff *ctx,
 
 	svc = lb6_lookup_service(&key, false);
 	if (svc) {
-#ifdef ENABLE_DSR_EXTERNAL
-        if (vip_found) {
-            if (ctx_adjust_hroom(ctx, -(int)sizeof(*ip6),
-                         BPF_ADJ_ROOM_MAC,
-                         BPF_F_ADJ_ROOM_FIXED_GSO))
-                return DROP_UNSUPP_SERVICE_PROTO;
-            ipv6_addr_copy(&tuple.daddr, &external_vip);
-            l4_off -= sizeof(*ip6);
-        }
-#endif
-
 		return nodeport_svc_lb6(ctx, &tuple, svc, &key, ip6, l3_off,
-					l4_off, src_sec_identity, ext_err, vip_found);
+					l4_off, src_sec_identity, ext_err, vip_found, &external_vip);
 	} else {
 skip_service_lookup:
 #ifdef ENABLE_NAT_46X64_GATEWAY
@@ -2808,7 +2808,8 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 					    int l4_off,
 					    __u32 src_sec_identity,
 					    __s8 *ext_err,
-					    bool vip_found __maybe_unused)
+					    bool vip_found __maybe_unused,
+					    __be32 external_vip __maybe_unused)
 {
 	const bool skip_l3_xlate = DSR_ENCAP_MODE == DSR_ENCAP_IPIP;
 	bool is_fragment = ipv4_is_fragment(ip4);
@@ -2824,8 +2825,18 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 	if (!lb4_svc_is_routable(svc))
 		return DROP_IS_CLUSTER_IP;
 
+#ifdef ENABLE_DSR_EXTERNAL
+		if (vip_found) {
+			if (ctx_adjust_hroom(ctx, -(int)sizeof(*ip4),
+					     BPF_ADJ_ROOM_MAC,
+					     BPF_F_ADJ_ROOM_FIXED_GSO))
+				return DROP_UNSUPP_SERVICE_PROTO;
+			tuple->daddr = external_vip;
+			l4_off -= sizeof(*ip4);
+		}
+#endif
 #if defined(ENABLE_L7_LB)
-	if (lb4_svc_is_l7loadbalancer(svc) && svc->l7_lb_proxy_port > 0) {
+	if (lb4_svc_is_l7loadbalancer(svc) && svc->l7_lb_proxy_port > 0 && !vip_found) {
 		/* We cannot redirect from the XDP layer to cilium_host.
 		 * Therefore, let the bpf_host to handle the L7 ingress
 		 * request.
@@ -2996,20 +3007,9 @@ static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,
 
 	svc = lb4_lookup_service(&key, false);
 	if (svc) {
-#ifdef ENABLE_DSR_EXTERNAL
-        if (vip_found) {
-            if (ctx_adjust_hroom(ctx, -(int)sizeof(*ip4),
-                         BPF_ADJ_ROOM_MAC,
-                         BPF_F_ADJ_ROOM_FIXED_GSO))
-                return DROP_UNSUPP_SERVICE_PROTO;
-            tuple.daddr = external_vip;
-            l4_off -= sizeof(*ip4);
-        }
-#endif
-
 		return nodeport_svc_lb4(ctx, &tuple, svc, &key, ip4, l3_off,
 					has_l4_header, l4_off,
-					src_sec_identity, ext_err, vip_found);
+					src_sec_identity, ext_err, vip_found, external_vip);
 	} else {
 skip_service_lookup:
 #ifdef ENABLE_NAT_46X64_GATEWAY

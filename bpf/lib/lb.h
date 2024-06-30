@@ -1235,7 +1235,7 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 	case IPPROTO_IPIP: {
 		struct iphdr inner;
 
-        printk("inside lb4_extract_tuple_and_vip proto is IPPROTO_IPIP. Exeternal is %d -> %d\n", ip4->saddr, ip4->daddr);
+        printk("inside lb4_extract_tuple_and_vip proto is IPPROTO_IPIP. Exeternal is %pi4 -> %pi4\n", ip4->saddr, ip4->daddr);
 		/* The initial packets hits the Cilium L4LB as:
 		 * - [ client-ip   -> l4lb-vip ]
 		 *
@@ -1254,7 +1254,7 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 			*external_vip = inner.daddr;
 			*vip_found = true;
 
-            printk("inside lb4_extract_tuple_and_vip vip_found %d. inner %d -> %d. from outer %d -> %d\n", inner.daddr, inner.saddr, inner.daddr, ip4->saddr, ip4->daddr);
+            printk("inside lb4_extract_tuple_and_vip vip_found. inner -> %pi4 from outer %pi4 -> %pi4\n", inner.daddr, ip4->saddr, ip4->daddr);
 		}
 		if (ipv4_hdrlen(&inner) != sizeof(*ip4))
 			return DROP_NAT_UNSUPP_PROTO;

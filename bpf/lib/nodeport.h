@@ -2474,9 +2474,9 @@ nodeport_rev_dnat_ingress_ipv4(struct __ctx_buff *ctx, struct trace_ctx *trace,
 		trace->reason = TRACE_REASON_CT_REPLY;
 #ifdef ENABLE_DSR_EXTERNAL
         if (ct_state.dsr_external) {
-	        printk("inside nodeport_rev_dnat_ingress_ipv4 reversing DSR for tuple %d -> %d\n", tuple.saddr, tuple.daddr);
+	        printk("inside nodeport_rev_dnat_ingress_ipv4 reversing DSR for tuple %pi4 -> %pi4\n", tuple.saddr, tuple.daddr);
             ret = lb4_rev_dsr(ctx, l3_off, l4_off, &ct_state.dsr4, false, &tuple, has_l4_header);
-	        printk("inside nodeport_rev_dnat_ingress_ipv4 reversed DSR for tuple %d -> %d %d\n", tuple.saddr, tuple.daddr, ret);
+	        printk("inside nodeport_rev_dnat_ingress_ipv4 reversed DSR for tuple %pi4 -> %pi4 %d\n", tuple.saddr, tuple.daddr, ret);
         } else
 #endif
         {
@@ -2835,15 +2835,15 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 
 #ifdef ENABLE_DSR_EXTERNAL
 		if (vip_found) {
-	        printk("inside nodeport_svc_lb4 vip_found, external_vip is %d\n", external_vip);
+	        printk("inside nodeport_svc_lb4 vip_found, external_vip is %pi4\n", external_vip);
 			if (ctx_adjust_hroom(ctx, -(int)sizeof(*ip4),
 					     BPF_ADJ_ROOM_MAC,
 					     BPF_F_ADJ_ROOM_FIXED_GSO)){
-	            printk("inside nodeport_svc_lb4 vip_found, dropping after ctx_adjust_hroom for external_vip %d\n", external_vip);
+	            printk("inside nodeport_svc_lb4 vip_found, dropping after ctx_adjust_hroom for external_vip %pi4\n", external_vip);
 				return DROP_UNSUPP_SERVICE_PROTO;
              }
 
-	        printk("inside nodeport_svc_lb4 moving L4 offset, external_vip is %d\n", external_vip);
+	        printk("inside nodeport_svc_lb4 moving L4 offset, external_vip is %pi4\n", external_vip);
 			tuple->daddr = external_vip;
 			l4_off -= sizeof(*ip4);
 		}
@@ -2923,10 +2923,10 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 			ct_state.src_sec_id = src_sec_identity;
 			ct_state.node_port = 1;
 #ifdef ENABLE_DSR_EXTERNAL
-            printk("inside nodeport_svc_lb4 creating new CT vip_found %d, dest %d:%d\n", vip_found, tuple->daddr, key->dport);
+            printk("inside nodeport_svc_lb4 creating new CT vip_found %d, dest %pi:%d\n", vip_found, tuple->daddr, key->dport);
             ct_state.dsr_external = vip_found;
             if (ct_state.dsr_external) {
-                printk("inside nodeport_svc_lb4 creating new CT DSR to %d:%d\n", tuple->daddr, key->dport);
+                printk("inside nodeport_svc_lb4 creating new CT DSR to %pi:%d\n", tuple->daddr, key->dport);
                 ct_state.dsr4.address = tuple->daddr;
                 ct_state.dsr4.port = key->dport;
             }
@@ -3005,13 +3005,20 @@ static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,
 
 	cilium_capture_in(ctx);
 
+	printk("inside nodeport_lb4 for %pi4 -> %pi4\n", ip4->saddr, ip4->daddr);
+
 	ret = lb4_extract_tuple_and_vip(ctx, ip4, l3_off, &l4_off, &tuple, &external_vip, &vip_found);
+	printk("inside nodeport_lb4 vip found %d for %pi4 after lb4_extract_tuple_and_vip, exit = %d\n", ip4->daddr, vip_found, ret);
+
 	if (IS_ERR(ret)) {
 		if (ret == DROP_UNSUPP_SERVICE_PROTO) {
+            printk("inside nodeport_lb4, skipping service lookup for %pi4\n", ip4->daddr);
+
 			is_svc_proto = false;
 			goto skip_service_lookup;
 		}
 		if (ret == DROP_UNKNOWN_L4) {
+            printk("inside nodeport_lb4, dropping unknown L4 %pi4\n", ip4->daddr);
 			ctx_set_xfer(ctx, XFER_PKT_NO_SVC);
 			return CTX_ACT_OK;
 		}
@@ -3022,10 +3029,12 @@ static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,
 
 	svc = lb4_lookup_service(&key, false);
 	if (svc) {
+        printk("inside nodeport_lb4 svc found for %pi4\n", tuple->daddr);
 		return nodeport_svc_lb4(ctx, &tuple, svc, &key, ip4, l3_off,
 					has_l4_header, l4_off,
 					src_sec_identity, ext_err, vip_found, external_vip);
 	} else {
+        printk("inside nodeport_lb4 svc not found for %pi4\n", tuple->daddr);
 skip_service_lookup:
 #ifdef ENABLE_NAT_46X64_GATEWAY
 		if (ip4->daddr != IPV4_DIRECT_ROUTING)

@@ -972,7 +972,7 @@ static __always_inline int ct_create6(const void *map_main, const void *map_rela
 		if (entry.dsr_external) {
 			entry.dsr6 = ct_state->dsr6;
 
-            printk("inside ct_create6 DSR is %d\n", ct_state->dsr6);
+            printk("inside ct_create6 DSR is %pi6\n", ct_state->dsr6.address);
 		}
 #endif
 	}
@@ -1037,7 +1037,7 @@ static __always_inline int ct_create4(const void *map_main,
 		if (entry.dsr_external){
 			entry.dsr4 = ct_state->dsr4;
 
-            printk("inside ct_create4 DSR is %d\n", ct_state->dsr4);
+            printk("inside ct_create4 DSR is %pi4\n", ct_state->dsr4.address);
 		}
 #endif
 	}

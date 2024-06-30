@@ -206,8 +206,10 @@ ct_lookup_fill_state(struct ct_state *state, const struct ct_entry *entry,
 		state->from_tunnel = entry->from_tunnel;
 #ifdef ENABLE_DSR_EXTERNAL
         state->dsr_external = entry->dsr_external;
-        if (state->dsr_external)
+        if (state->dsr_external) {
+            printk("inside ct_lookup_fill_state DSR is %d\n", entry->dsr_external);
             state->dsr_all = entry->dsr_all;
+        }
 #endif
 #ifndef HAVE_FIB_IFINDEX
 		state->ifindex = entry->ifindex;
@@ -937,6 +939,9 @@ ct_create_fill_entry(struct ct_entry *entry, const struct ct_state *state,
 		entry->from_tunnel = state->from_tunnel;
 #ifdef ENABLE_DSR_EXTERNAL
 		entry->dsr_external = state->dsr_external;
+		if (entry->dsr_external) {
+            printk("inside ct_create_fill_entry DSR is %d\n", entry->dsr_external);
+		}
 #endif
 #ifndef HAVE_FIB_IFINDEX
 		entry->ifindex = state->ifindex;
@@ -964,8 +969,11 @@ static __always_inline int ct_create6(const void *map_main, const void *map_rela
 	if (ct_state) {
 		ct_create_fill_entry(&entry, ct_state, dir);
 #ifdef ENABLE_DSR_EXTERNAL
-		if (entry.dsr_external)
+		if (entry.dsr_external) {
 			entry.dsr6 = ct_state->dsr6;
+
+            printk("inside ct_create6 DSR is %d\n", ct_state->dsr6);
+		}
 #endif
 	}
 
@@ -1026,8 +1034,11 @@ static __always_inline int ct_create4(const void *map_main,
 	if (ct_state) {
 		ct_create_fill_entry(&entry, ct_state, dir);
 #ifdef ENABLE_DSR_EXTERNAL
-		if (entry.dsr_external)
+		if (entry.dsr_external){
 			entry.dsr4 = ct_state->dsr4;
+
+            printk("inside ct_create4 DSR is %d\n", ct_state->dsr4);
+		}
 #endif
 	}
 

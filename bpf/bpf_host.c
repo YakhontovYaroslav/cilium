@@ -1316,12 +1316,15 @@ int cil_from_netdev(struct __ctx_buff *ctx)
 
 	return handle_netdev(ctx, false);
 
+/*
 #ifdef ENABLE_IPIP_TERMINATION
 	ret = decap_ipip(ctx);
 	if (IS_ERR(ret)) {
+        printk("decap_ipip returned %d\n", ret);
 		goto drop_err;
 	}
 #endif
+*/
 
 drop_err:
 	return send_drop_notify_error(ctx, src_id, ret, CTX_ACT_DROP, METRIC_INGRESS);

@@ -934,7 +934,9 @@ nodeport_rev_dnat_ingress_ipv6(struct __ctx_buff *ctx, struct trace_ctx *trace,
 			return ret;
 #ifdef ENABLE_DSR_EXTERNAL
 		if (ct_state.dsr_external) {
+	        printk("inside nodeport_rev_dnat_ingress_ipv6 reversing DSR\n");
             ret = lb6_rev_dsr(ctx, l4_off, &ct_state.dsr6, &tuple);
+	        printk("inside nodeport_rev_dnat_ingress_ipv6 reversed DSR %d\n", ret);
 		} else
 #endif
 		{
@@ -1284,10 +1286,13 @@ static __always_inline int nodeport_svc_lb6(struct __ctx_buff *ctx,
 
 #ifdef ENABLE_DSR_EXTERNAL
 		if (vip_found) {
+	        printk("inside nodeport_svc_lb6 vip_found\n");
 			if (ctx_adjust_hroom(ctx, -(int)sizeof(*ip6),
 					     BPF_ADJ_ROOM_MAC,
 					     BPF_F_ADJ_ROOM_FIXED_GSO))
 				return DROP_UNSUPP_SERVICE_PROTO;
+
+	        printk("inside nodeport_svc_lb6 moving L4 offset\n");
 			ipv6_addr_copy(&tuple->daddr, external_vip);
 			l4_off -= sizeof(*ip6);
 		}
@@ -1338,6 +1343,7 @@ static __always_inline int nodeport_svc_lb6(struct __ctx_buff *ctx,
 			ct_state.src_sec_id = WORLD_IPV6_ID;
 			ct_state.node_port = 1;
 #ifdef ENABLE_DSR_EXTERNAL
+            printk("inside nodeport_svc_lb6 creating new CT vip_found %d\n", vip_found);
             ct_state.dsr_external = vip_found;
             if (ct_state.dsr_external) {
                 ipv6_addr_copy(&ct_state.dsr6.address, &tuple->daddr);
@@ -2468,7 +2474,9 @@ nodeport_rev_dnat_ingress_ipv4(struct __ctx_buff *ctx, struct trace_ctx *trace,
 		trace->reason = TRACE_REASON_CT_REPLY;
 #ifdef ENABLE_DSR_EXTERNAL
         if (ct_state.dsr_external) {
+	        printk("inside nodeport_rev_dnat_ingress_ipv4 reversing DSR for tuple %d -> %d\n", tuple.saddr, tuple.daddr);
             ret = lb4_rev_dsr(ctx, l3_off, l4_off, &ct_state.dsr4, false, &tuple, has_l4_header);
+	        printk("inside nodeport_rev_dnat_ingress_ipv4 reversed DSR for tuple %d -> %d %d\n", tuple.saddr, tuple.daddr, ret);
         } else
 #endif
         {
@@ -2827,10 +2835,15 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 
 #ifdef ENABLE_DSR_EXTERNAL
 		if (vip_found) {
+	        printk("inside nodeport_svc_lb4 vip_found, external_vip is %d\n", external_vip);
 			if (ctx_adjust_hroom(ctx, -(int)sizeof(*ip4),
 					     BPF_ADJ_ROOM_MAC,
-					     BPF_F_ADJ_ROOM_FIXED_GSO))
+					     BPF_F_ADJ_ROOM_FIXED_GSO)){
+	            printk("inside nodeport_svc_lb4 vip_found, dropping after ctx_adjust_hroom for external_vip %d\n", external_vip);
 				return DROP_UNSUPP_SERVICE_PROTO;
+             }
+
+	        printk("inside nodeport_svc_lb4 moving L4 offset, external_vip is %d\n", external_vip);
 			tuple->daddr = external_vip;
 			l4_off -= sizeof(*ip4);
 		}
@@ -2910,8 +2923,10 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 			ct_state.src_sec_id = src_sec_identity;
 			ct_state.node_port = 1;
 #ifdef ENABLE_DSR_EXTERNAL
+            printk("inside nodeport_svc_lb4 creating new CT vip_found %d, dest %d:%d\n", vip_found, tuple->daddr, key->dport);
             ct_state.dsr_external = vip_found;
             if (ct_state.dsr_external) {
+                printk("inside nodeport_svc_lb4 creating new CT DSR to %d:%d\n", tuple->daddr, key->dport);
                 ct_state.dsr4.address = tuple->daddr;
                 ct_state.dsr4.port = key->dport;
             }

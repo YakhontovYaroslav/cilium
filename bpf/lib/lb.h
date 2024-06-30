@@ -568,6 +568,8 @@ lb6_extract_tuple_and_vip(struct __ctx_buff *ctx, struct ipv6hdr *ip6,
     case IPPROTO_IPV6: {
         struct ipv6hdr inner;
 
+        printk("inside lb6_extract_tuple_and_vip proto is IPPROTO_IPV6\n");
+
         /* See lb4_extract_tuple_and_vip() with regards to L4LB. */
         ctx_load_bytes(ctx, *l4_off, &inner, sizeof(inner));
         tuple->nexthdr = inner.nexthdr;
@@ -575,6 +577,8 @@ lb6_extract_tuple_and_vip(struct __ctx_buff *ctx, struct ipv6hdr *ip6,
         if (external_vip) {
             ipv6_addr_copy(external_vip, (union v6addr *)&inner.daddr);
             *vip_found = true;
+
+            printk("inside lb6_extract_tuple_and_vip vip_found\n");
         }
         *l4_off += sizeof(*ip6);
         fallthrough;
@@ -1231,6 +1235,7 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 	case IPPROTO_IPIP: {
 		struct iphdr inner;
 
+        printk("inside lb4_extract_tuple_and_vip proto is IPPROTO_IPIP. Exeternal is %d -> %d\n", ip4->saddr, ip4->daddr);
 		/* The initial packets hits the Cilium L4LB as:
 		 * - [ client-ip   -> l4lb-vip ]
 		 *
@@ -1248,6 +1253,8 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 		if (external_vip) {
 			*external_vip = inner.daddr;
 			*vip_found = true;
+
+            printk("inside lb4_extract_tuple_and_vip vip_found %d. inner %d -> %d. from outer %d -> %d\n", inner.daddr, inner.saddr, inner.daddr, ip4->saddr, ip4->daddr);
 		}
 		if (ipv4_hdrlen(&inner) != sizeof(*ip4))
 			return DROP_NAT_UNSUPP_PROTO;

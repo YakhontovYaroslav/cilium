@@ -18,11 +18,15 @@ decap_ipv4(struct __ctx_buff *ctx)
 	struct lb4_key key = {};
 	struct lb4_service *svc;
 
+	printk("inside decap_ipv4\n");
+
 	if (!revalidate_data_pull(ctx, &data, &data_end, &outer_ip4))
 		return DROP_INVALID;
 	if (outer_ip4->protocol != IPPROTO_IPIP) {
 		return CTX_ACT_OK;
 	}
+
+	printk("inside decap_ipv4 packet is IPIP\n");
 
 	outer_ip4_len = ipv4_hdrlen(outer_ip4);
 	inner_ip4_off = outer_ip4_off + outer_ip4_len;
@@ -45,6 +49,8 @@ decap_ipv4(struct __ctx_buff *ctx)
 
 		if (ctx_adjust_hroom(ctx, -outer_ip4_len, BPF_ADJ_ROOM_MAC, BPF_F_ADJ_ROOM_FIXED_GSO))
 			return DROP_INVALID;
+
+	    printk("inside decap_ipv4 extracted svc %d\n", svc->backend_id);
 	}
 
 	return CTX_ACT_OK;
@@ -54,6 +60,8 @@ static __always_inline int
 decap_ipip(struct __ctx_buff *ctx)
 {
 	__u16 proto = 0;
+
+	printk("inside decap_ipip\n");
 
 	if (!validate_ethertype(ctx, &proto))
 		return DROP_INVALID;

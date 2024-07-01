@@ -127,6 +127,13 @@ const (
 
 	DBG_LB_FOUND_IPIP
 	DBG_LB_FOUND_EXTERNALVIP
+	DBG_LB_PROCESSING_PACKET
+	DBG_LB_DROP_DEFAULT
+	DBG_LB_EXT_DSR_ENABLED
+	DBG_LB_CTX_IS_SKB
+	DBG_LB_HANDLING_IPIP
+	DBG_LB_DROP_NAT
+	DBG_LB_PORT_LOAD_ERR
 )
 
 // must be in sync with <bpf/lib/conntrack.h>
@@ -521,6 +528,20 @@ func (n *DebugMsg) Message(linkMonitor getters.LinkGetter) string {
 		} else {
 			return fmt.Sprintf("Setting DSR parameters on Service packet %s", infoIPv4(n))
 		}
+	case DBG_LB_PROCESSING_PACKET:
+		return fmt.Sprintf("Extracting information from %s", infoIPv4(n))
+	case DBG_LB_DROP_DEFAULT:
+		return fmt.Sprintf("Dropping default unhandled proto %s", infoIPv4(n))
+	case DBG_LB_EXT_DSR_ENABLED:
+		return fmt.Sprintf("External DSR is enabled for %s", infoIPv4(n))
+	case DBG_LB_CTX_IS_SKB:
+		return fmt.Sprintf("Ctx is SKB for %s", infoIPv4(n))
+	case DBG_LB_HANDLING_IPIP:
+		return fmt.Sprintf("Handling IPIP packet %s", infoIPv4(n))
+	case DBG_LB_DROP_NAT:
+		return fmt.Sprintf("Dropping IPIP packet - NAT %s", infoIPv4(n))
+	case DBG_LB_PORT_LOAD_ERR:
+		return fmt.Sprintf("IPIP port load error %s", infoIPv4(n))
 	default:
 		return fmt.Sprintf("Unknown message type=%d arg1=%d arg2=%d", n.SubType, n.Arg1, n.Arg2)
 	}

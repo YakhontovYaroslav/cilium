@@ -1225,11 +1225,22 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 
 	*l4_off = l3_off + ipv4_hdrlen(ip4);
 
+    cilium_dbg3(ctx, DBG_LB_PROCESSING_PACKET, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+
+#ifdef ENABLE_DSR_EXTERNAL
+    cilium_dbg3(ctx, DBG_LB_EXT_DSR_ENABLED, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+#if __ctx_is == __ctx_skb
+    cilium_dbg3(ctx, DBG_LB_CTX_IS_SKB, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+#endif
+#endif
+
 	switch (tuple->nexthdr) {
 #ifdef ENABLE_DSR_EXTERNAL
 #if __ctx_is == __ctx_skb
 	case IPPROTO_IPIP: {
 		struct iphdr inner;
+
+        cilium_dbg3(ctx, DBG_LB_HANDLING_IPIP, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 
 		/* The initial packets hits the Cilium L4LB as:
 		 * - [ client-ip   -> l4lb-vip ]
@@ -1256,14 +1267,19 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
             cilium_dbg3(ctx, DBG_LB_FOUND_EXTERNALVIP, inner.saddr, inner.daddr, 0 << 16 | inner.protocol);
             cilium_dbg3(ctx, DBG_LB_FOUND_EXTERNALVIP, 0, 0, *external_vip);
 		}
-		if (ipv4_hdrlen(&inner) != sizeof(*ip4))
+		if (ipv4_hdrlen(&inner) != sizeof(*ip4)) {
+            cilium_dbg3(ctx, DBG_LB_DROP_NAT, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 			return DROP_NAT_UNSUPP_PROTO;
+		}
 		*l4_off += sizeof(*ip4);
 
         ret = ipv4_load_l4_ports(ctx, ip4, *l4_off, CT_EGRESS, &tuple->dport, NULL);
 
-        if (IS_ERR(ret))
+        if (IS_ERR(ret)) {
+            cilium_dbg3(ctx, DBG_LB_PORT_LOAD_ERR, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
             return ret;
+        }
+
         return 0;
     };
 #endif
@@ -1282,6 +1298,7 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 	case IPPROTO_ICMP:
 		return DROP_UNSUPP_SERVICE_PROTO;
 	default:
+        cilium_dbg3(ctx, DBG_LB_DROP_DEFAULT, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 		return DROP_UNKNOWN_L4;
 	}
 }

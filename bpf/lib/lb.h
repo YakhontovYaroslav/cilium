@@ -564,7 +564,7 @@ lb6_extract_tuple_and_vip(struct __ctx_buff *ctx, struct ipv6hdr *ip6,
 
 	switch (tuple->nexthdr) {
 #ifdef ENABLE_DSR_EXTERNAL
-# if __ctx_is == __ctx_skb
+#if __ctx_is == __ctx_skb
     case IPPROTO_IPV6: {
         struct ipv6hdr inner;
 
@@ -579,7 +579,7 @@ lb6_extract_tuple_and_vip(struct __ctx_buff *ctx, struct ipv6hdr *ip6,
         *l4_off += sizeof(*ip6);
         fallthrough;
     };
-# endif
+#endif
 #endif
 	case IPPROTO_TCP:
 	case IPPROTO_UDP:
@@ -1227,7 +1227,7 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 
 	switch (tuple->nexthdr) {
 #ifdef ENABLE_DSR_EXTERNAL
-# if __ctx_is == __ctx_skb
+#if __ctx_is == __ctx_skb
 	case IPPROTO_IPIP: {
 		struct iphdr inner;
 
@@ -1261,7 +1261,7 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 		*l4_off += sizeof(*ip4);
 		fallthrough;
 	};
-# endif
+#endif
 #endif
 	case IPPROTO_TCP:
 	case IPPROTO_UDP:

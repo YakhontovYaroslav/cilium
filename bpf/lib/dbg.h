@@ -123,6 +123,32 @@ enum {
 				 * arg3: proxy port (in host byte order)
 				 */
 	DBG_SKIP_POLICY,	/**/
+
+    DBG_INCOMING,
+    DBG_DROP_OVERLAY,
+    DBG_SKIP_UNKNOWN_PROTO,
+    DBG_DROP_REVALIDATE,
+    DBG_TAIL_INVOKED,
+    DBG_TAIL_STARTED,
+    DBG_HANDLE_V4_RESULT,
+    DBG_DROP_REVALIDATE_V4,
+    DBG_DROP_FRAGMENT_V4,
+    DBG_HANDLE_V4_NODEPORT_RESULT,
+    DBG_HANDLE_V4_NODEPORT_SKIPPED,
+
+    DBG_NODEPORT_PROCESSING,
+    DBG_NODEPORT_REVERSING_DSR,
+    DBG_NODEPORT_DROP_SERVICE_PROTO,
+    DBG_NODEPORT_DROP_UNKNOWN_L4,
+    DBG_NODEPORT_SERVICE_FOUND,
+    DBG_NODEPORT_SERVICE_NOT_FOUND,
+    DBG_NODEPORT_SERVICE_LB_VIPFOUND,
+    DBG_NODEPORT_SERVICE_LB_DROP_PROTO,
+    DBG_NODEPORT_SERVICE_LB_MOVED_L4_OFFSET,
+    DBG_NODEPORT_SERVICE_LB_SETTING_NEW_CT,
+
+    DBG_LB_FOUND_IPIP,
+    DBG_LB_FOUND_EXTERNALVIP,
 };
 
 /* Capture types */
@@ -142,14 +168,10 @@ enum {
 };
 
 #ifndef EVENT_SOURCE
-#define EVENT_SOURCE 0
+#define EVENT_SOURCE 0x1010
 #endif
 
-#ifdef DEBUG
 #include "events.h"
-#endif
-
-#ifdef DEBUG
 #include "common.h"
 #include "utils.h"
 
@@ -235,34 +257,3 @@ static __always_inline void cilium_dbg_capture(struct __ctx_buff *ctx, __u8 type
 {
 	cilium_dbg_capture2(ctx, type, arg1, 0);
 }
-#else
-# define printk(fmt, ...)					\
-		do { } while (0)
-
-static __always_inline
-void cilium_dbg(struct __ctx_buff *ctx __maybe_unused, __u8 type __maybe_unused,
-		__u32 arg1 __maybe_unused, __u32 arg2 __maybe_unused)
-{
-}
-
-static __always_inline
-void cilium_dbg3(struct __ctx_buff *ctx __maybe_unused,
-		 __u8 type __maybe_unused, __u32 arg1 __maybe_unused,
-		 __u32 arg2 __maybe_unused, __u32 arg3 __maybe_unused)
-{
-}
-
-static __always_inline
-void cilium_dbg_capture(struct __ctx_buff *ctx __maybe_unused,
-			__u8 type __maybe_unused, __u32 arg1 __maybe_unused)
-{
-}
-
-static __always_inline
-void cilium_dbg_capture2(struct __ctx_buff *ctx __maybe_unused,
-			 __u8 type __maybe_unused, __u32 arg1 __maybe_unused,
-			 __u32 arg2 __maybe_unused)
-{
-}
-
-#endif

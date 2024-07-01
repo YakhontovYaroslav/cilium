@@ -101,6 +101,32 @@ const (
 	DbgSkLookup6
 	DbgSkAssign
 	DbgL7LB
+	DbgSkipPolicy
+	DBG_INCOMING
+	DBG_DROP_OVERLAY
+	DBG_SKIP_UNKNOWN_PROTO
+	DBG_DROP_REVALIDATE
+	DBG_TAIL_INVOKED
+	DBG_TAIL_STARTED
+	DBG_HANDLE_V4_RESULT
+	DBG_DROP_REVALIDATE_V4
+	DBG_DROP_FRAGMENT_V4
+	DBG_HANDLE_V4_NODEPORT_RESULT
+	DBG_HANDLE_V4_NODEPORT_SKIPPED
+
+	DBG_NODEPORT_PROCESSING
+	DBG_NODEPORT_REVERSING_DSR
+	DBG_NODEPORT_DROP_SERVICE_PROTO
+	DBG_NODEPORT_DROP_UNKNOWN_L4
+	DBG_NODEPORT_SERVICE_FOUND
+	DBG_NODEPORT_SERVICE_NOT_FOUND
+	DBG_NODEPORT_SERVICE_LB_VIPFOUND
+	DBG_NODEPORT_SERVICE_LB_DROP_PROTO
+	DBG_NODEPORT_SERVICE_LB_MOVED_L4_OFFSET
+	DBG_NODEPORT_SERVICE_LB_SETTING_NEW_CT
+
+	DBG_LB_FOUND_IPIP
+	DBG_LB_FOUND_EXTERNALVIP
 )
 
 // must be in sync with <bpf/lib/conntrack.h>
@@ -210,6 +236,14 @@ func l4CreateInfo(n *DebugMsg) string {
 	dport := byteorder.NetworkToHost16(uint16(n.Arg3 >> 16))
 	proto := n.Arg3 & 0xFF
 	return fmt.Sprintf("src=%d dst=%d dport=%d proto=%d", src, dst, dport, proto)
+}
+
+func infoIPv4(n *DebugMsg) string {
+	src := n.Arg1
+	dst := n.Arg2
+	dport := byteorder.NetworkToHost16(uint16(n.Arg3 >> 16))
+	proto := n.Arg3 & 0xFF
+	return fmt.Sprintf("src=%s dst=%s dport=%d proto=%d", ip4Str(src), ip4Str(dst), dport, proto)
 }
 
 func ip4Str(arg1 uint32) string {
@@ -405,6 +439,88 @@ func (n *DebugMsg) Message(linkMonitor getters.LinkGetter) string {
 		return fmt.Sprintf("Socket assign: %s", skAssignInfo(n))
 	case DbgL7LB:
 		return fmt.Sprintf("L7 LB from %s to %s: proxy port %d", ip4Str(n.Arg1), ip4Str(n.Arg2), n.Arg3)
+	case DBG_INCOMING:
+		return fmt.Sprintf("Incoming packet")
+	case DBG_DROP_OVERLAY:
+		return fmt.Sprintf("Incoming packet dropped due to overlay decoding failure")
+	case DBG_SKIP_UNKNOWN_PROTO:
+		return fmt.Sprintf("Skipped packet with unknown protocol %d", n.Arg3)
+	case DBG_DROP_REVALIDATE:
+		return fmt.Sprintf("Dropped invalid packet")
+	case DBG_TAIL_INVOKED:
+		return fmt.Sprintf("Invoked tail call CILIUM_CALL_IPV4_FROM_NETDEV for packet %s", infoIPv4(n))
+	case DBG_TAIL_STARTED:
+		return fmt.Sprintf("Tail call started for packet")
+	case DBG_HANDLE_V4_RESULT:
+		return fmt.Sprintf("IPv4 packet handled with status %d", n.Arg1)
+	case DBG_DROP_REVALIDATE_V4:
+		return fmt.Sprintf("Dropped invalid IPv4 packet")
+	case DBG_DROP_FRAGMENT_V4:
+		return fmt.Sprintf("Dropped fragmented IPv4 packet")
+	case DBG_HANDLE_V4_NODEPORT_RESULT:
+		if n.Arg1 == 0 {
+			return fmt.Sprintf("Handled NodePort packet with status %d", n.Arg3)
+		} else {
+			return fmt.Sprintf("Handled NodePort packet %s", infoIPv4(n))
+		}
+	case DBG_HANDLE_V4_NODEPORT_SKIPPED:
+		return fmt.Sprintf("Skipped handling NodePort %s", infoIPv4(n))
+	case DBG_LB_FOUND_IPIP:
+		if byteorder.NetworkToHost16(uint16(n.Arg3>>16)) > 0 {
+			return fmt.Sprintf("Processed inner IPIP packet %s", infoIPv4(n))
+		} else {
+			return fmt.Sprintf("Processed IPIP packet %s", infoIPv4(n))
+		}
+	case DBG_LB_FOUND_EXTERNALVIP:
+		if n.Arg1 == 0 {
+			return fmt.Sprintf("Processed inner IPIP - extracted %s VIP", ip4Str(n.Arg2))
+		} else {
+			return fmt.Sprintf("Processed inner IPIP %s", infoIPv4(n))
+		}
+	case DBG_NODEPORT_PROCESSING:
+		if n.Arg1 == 0 {
+			return fmt.Sprintf("Processed NodePort packet extracted %s VIP", ip4Str(n.Arg2))
+		} else {
+			return fmt.Sprintf("Processed NodePort packet %s", infoIPv4(n))
+		}
+	case DBG_NODEPORT_REVERSING_DSR:
+		if n.Arg1 == 0 {
+			return fmt.Sprintf("Reversing DSR for %s VIP", ip4Str(n.Arg2))
+		} else {
+			return fmt.Sprintf("Reversing DSR for packet %s", infoIPv4(n))
+		}
+	case DBG_NODEPORT_DROP_SERVICE_PROTO:
+		return fmt.Sprintf("Dropped NodePort packet %s - unsupported service proto", infoIPv4(n))
+	case DBG_NODEPORT_DROP_UNKNOWN_L4:
+		return fmt.Sprintf("Dropped NodePort packet %s - unknown L4", infoIPv4(n))
+	case DBG_NODEPORT_SERVICE_FOUND:
+		return fmt.Sprintf("Service found for NodePort packet %s", infoIPv4(n))
+	case DBG_NODEPORT_SERVICE_NOT_FOUND:
+		return fmt.Sprintf("Service not found for NodePort packet %s - unknown L4", infoIPv4(n))
+	case DBG_NODEPORT_SERVICE_LB_VIPFOUND:
+		if n.Arg1 == 0 {
+			return fmt.Sprintf("Processing Service packet extracted %s VIP", ip4Str(n.Arg2))
+		} else {
+			return fmt.Sprintf("Processing Service packet %s", infoIPv4(n))
+		}
+	case DBG_NODEPORT_SERVICE_LB_DROP_PROTO:
+		if n.Arg1 == 0 {
+			return fmt.Sprintf("Dropping Service packet %s VIP - unsupported protocol", ip4Str(n.Arg2))
+		} else {
+			return fmt.Sprintf("Dropping Service packet %s - unsupported protocol", infoIPv4(n))
+		}
+	case DBG_NODEPORT_SERVICE_LB_MOVED_L4_OFFSET:
+		if n.Arg1 == 0 {
+			return fmt.Sprintf("Moving L4 offset for Service packet %s VIP", ip4Str(n.Arg2))
+		} else {
+			return fmt.Sprintf("Moving L4 offset for Service packet %s", infoIPv4(n))
+		}
+	case DBG_NODEPORT_SERVICE_LB_SETTING_NEW_CT:
+		if n.Arg1 == 0 {
+			return fmt.Sprintf("Setting DSR parameters on Service packet %s VIP", ip4Str(n.Arg2))
+		} else {
+			return fmt.Sprintf("Setting DSR parameters on Service packet %s", infoIPv4(n))
+		}
 	default:
 		return fmt.Sprintf("Unknown message type=%d arg1=%d arg2=%d", n.SubType, n.Arg1, n.Arg2)
 	}

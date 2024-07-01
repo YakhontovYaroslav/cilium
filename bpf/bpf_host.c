@@ -589,7 +589,7 @@ handle_ipv4(struct __ctx_buff *ctx, __u32 secctx __maybe_unused,
 	struct iphdr *ip4;
 
 	if (!revalidate_data(ctx, &data, &data_end, &ip4)){
-	    printk("inside handle_ipv4 dropping invalid after revalidate_data\n");
+        cilium_dbg3(ctx, DBG_DROP_REVALIDATE_V4, 0, 0, 0);
 		return DROP_INVALID;
 	}
 
@@ -599,7 +599,7 @@ handle_ipv4(struct __ctx_buff *ctx, __u32 secctx __maybe_unused,
  */
 #ifndef ENABLE_IPV4_FRAGMENTS
 	if (ipv4_is_fragment(ip4)) {
-	    printk("inside handle_ipv4 dropping fragmented packet\n");
+        cilium_dbg3(ctx, DBG_DROP_FRAGMENT_V4, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 		return DROP_FRAG_NOSUPPORT;
 	}
 #endif
@@ -610,7 +610,8 @@ handle_ipv4(struct __ctx_buff *ctx, __u32 secctx __maybe_unused,
 			bool __maybe_unused is_dsr = false;
 
 			int ret = nodeport_lb4(ctx, ip4, ETH_HLEN, secctx, ext_err, &is_dsr);
-	        printk("inside handle_ipv4 nodeport_lb4 returned %d\n", ret);
+            cilium_dbg3(ctx, DBG_HANDLE_V4_NODEPORT_RESULT, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+            cilium_dbg3(ctx, DBG_HANDLE_V4_NODEPORT_RESULT, 0, 0, ret);
 #ifdef ENABLE_IPV6
 			if (ret == NAT_46X64_RECIRC) {
 				ctx_store_meta(ctx, CB_SRC_LABEL, secctx);
@@ -626,6 +627,8 @@ handle_ipv4(struct __ctx_buff *ctx, __u32 secctx __maybe_unused,
 			 */
 			if (ret < 0 || ret == TC_ACT_REDIRECT)
 				return ret;
+		} else {
+            cilium_dbg3(ctx, DBG_HANDLE_V4_NODEPORT_SKIPPED, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 		}
 	}
 #endif /* ENABLE_NODEPORT */
@@ -911,7 +914,7 @@ tail_handle_ipv4(struct __ctx_buff *ctx, __u32 ipcache_srcid, const bool from_ho
 	__s8 ext_err = 0;
 
 	ret = handle_ipv4(ctx, src_sec_identity, ipcache_srcid, from_host, &ext_err);
-    printk("inside tail_handle_ipv4 return code is %d\n", ret);
+    cilium_dbg3(ctx, DBG_HANDLE_V4_RESULT, ret, 0, 0);
 
 	/* TC_ACT_REDIRECT is not an error, but it means we should stop here. */
 	if (ret == CTX_ACT_OK) {
@@ -951,7 +954,7 @@ int tail_handle_ipv4_from_host(struct __ctx_buff *ctx)
 __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_FROM_NETDEV)
 int tail_handle_ipv4_from_netdev(struct __ctx_buff *ctx)
 {
-    printk("inside ntail_handle_ipv4_from_netdev\n");
+    cilium_dbg3(ctx, DBG_TAIL_STARTED, 0, 0, 0);
 	return tail_handle_ipv4(ctx, 0, false);
 }
 
@@ -1184,8 +1187,7 @@ do_netdev(struct __ctx_buff *ctx, __u16 proto, const bool from_host)
 		 * arrived with the header not being not in the linear data.
 		 */
 		if (!revalidate_data_pull(ctx, &data, &data_end, &ip4)){
-
-            printk("inside do_netdev drop after revalidate_data_pull\n");
+            cilium_dbg3(ctx, DBG_DROP_REVALIDATE, 0, 0, 0 << 16 | proto);
 
 			return send_drop_notify_error(ctx, identity, DROP_INVALID,
 						      CTX_ACT_DROP, METRIC_INGRESS);
@@ -1204,7 +1206,7 @@ do_netdev(struct __ctx_buff *ctx, __u16 proto, const bool from_host)
 # endif /* defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_MASQUERADE_IPV4) */
 		}
 
-        printk("inside do_netdev invoking tail call CILIUM_CALL_IPV4_FROM_NETDEV %d \n", CILIUM_CALL_IPV4_FROM_NETDEV);
+        cilium_dbg3(ctx, DBG_TAIL_INVOKED, ip4->saddr, ip4->daddr, 0 << 16 | proto);
 		ret = tail_call_internal(ctx, from_host ? CILIUM_CALL_IPV4_FROM_HOST :
 							  CILIUM_CALL_IPV4_FROM_NETDEV,
 					 &ext_err);
@@ -1266,7 +1268,7 @@ handle_netdev(struct __ctx_buff *ctx, const bool from_host)
 				  TRACE_IFINDEX_UNKNOWN, TRACE_REASON_UNKNOWN, 0);
 		/* Pass unknown traffic to the stack */
 
-        printk("inside handle_netdev, received unknown protocol %d\n", proto);
+        cilium_dbg3(ctx, DBG_SKIP_UNKNOWN_PROTO, 0, 0, 0 << 16 | proto);
 		return CTX_ACT_OK;
 #endif /* ENABLE_HOST_FIREWALL */
 	}
@@ -1292,7 +1294,7 @@ int cil_from_netdev(struct __ctx_buff *ctx)
 #endif
 	int ret;
 
-    printk("cil_from_netdev incoming packet\n");
+    cilium_dbg3(ctx, DBG_INCOMING, 0, 0, 0);
 
 	/* Filter allowed vlan id's and pass them back to kernel.
 	 * We will see the packet again in from-netdev@eth0.vlanXXX.
@@ -1324,7 +1326,7 @@ int cil_from_netdev(struct __ctx_buff *ctx)
 #ifdef ENABLE_HIGH_SCALE_IPCACHE
 	ret = decapsulate_overlay(ctx, &src_id);
 	if (IS_ERR(ret)) {
-	    printk("cil_from_netdev dropping packet, overlay failed %d\n", ret);
+        cilium_dbg3(ctx, DBG_DROP_OVERLAY, 0, 0, 0);
 		goto drop_err;
 	}
 

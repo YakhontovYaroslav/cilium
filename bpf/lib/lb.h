@@ -1231,8 +1231,6 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 	case IPPROTO_IPIP: {
 		struct iphdr inner;
 
-        cilium_dbg3(ctx, DBG_LB_FOUND_IPIP, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
-        cilium_dbg3(ctx, DBG_LB_FOUND_IPIP, inner.saddr, inner.daddr, 1 << 16 | inner.protocol);
 		/* The initial packets hits the Cilium L4LB as:
 		 * - [ client-ip   -> l4lb-vip ]
 		 *
@@ -1245,6 +1243,10 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 		 * k8s-svc-ip ports are the same / must match.
 		 */
 		ctx_load_bytes(ctx, *l4_off, &inner, sizeof(inner));
+
+        cilium_dbg3(ctx, DBG_LB_FOUND_IPIP, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+        cilium_dbg3(ctx, DBG_LB_FOUND_IPIP, inner.saddr, inner.daddr, 1 << 16 | inner.protocol);
+
 		tuple->nexthdr = inner.protocol;
 		tuple->saddr = inner.saddr;
 		if (external_vip) {

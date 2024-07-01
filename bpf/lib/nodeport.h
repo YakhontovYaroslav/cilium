@@ -2836,12 +2836,12 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 					     BPF_ADJ_ROOM_MAC,
 					     BPF_F_ADJ_ROOM_FIXED_GSO)){
 
-	            cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_DROP_PROTO, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+	            //cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_DROP_PROTO, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 	            cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_DROP_PROTO, 0, 0, external_vip);
 				return DROP_UNSUPP_SERVICE_PROTO;
              }
 
-            cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_MOVED_L4_OFFSET, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+            //cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_MOVED_L4_OFFSET, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
             cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_MOVED_L4_OFFSET, 0, 0, external_vip);
 			tuple->daddr = external_vip;
 			l4_off -= sizeof(*ip4);
@@ -2923,8 +2923,8 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 			ct_state.node_port = 1;
 #ifdef ENABLE_DSR_EXTERNAL
             if (vip_found) {
-                cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_SETTING_NEW_CT, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
-                cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_SETTING_NEW_CT, 0, 0, external_vip);
+              //cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_SETTING_NEW_CT, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+              cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_SETTING_NEW_CT, 0, 0, external_vip);
             }
             ct_state.dsr_external = vip_found;
             if (ct_state.dsr_external) {

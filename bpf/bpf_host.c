@@ -588,7 +588,7 @@ handle_ipv4(struct __ctx_buff *ctx, __u32 secctx __maybe_unused,
 	void *data, *data_end;
 	struct iphdr *ip4;
 
-	if (!revalidate_data(ctx, &data, &data_end, &ip4)){
+	if (!revalidate_data(ctx, &data, &data_end, &ip4)) {
         cilium_dbg3(ctx, DBG_DROP_REVALIDATE_V4, 0, 0, 0);
 		return DROP_INVALID;
 	}
@@ -610,7 +610,9 @@ handle_ipv4(struct __ctx_buff *ctx, __u32 secctx __maybe_unused,
 			bool __maybe_unused is_dsr = false;
 
 			int ret = nodeport_lb4(ctx, ip4, ETH_HLEN, secctx, ext_err, &is_dsr);
-            cilium_dbg3(ctx, DBG_HANDLE_V4_NODEPORT_RESULT, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+//			if (ip4) {
+//                cilium_dbg3(ctx, DBG_HANDLE_V4_NODEPORT_RESULT, ip4->saddr, ip4->daddr, 0);
+//			}
             cilium_dbg3(ctx, DBG_HANDLE_V4_NODEPORT_RESULT, 0, 0, ret);
 #ifdef ENABLE_IPV6
 			if (ret == NAT_46X64_RECIRC) {

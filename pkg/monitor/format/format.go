@@ -168,10 +168,10 @@ func (m *MonitorFormatter) debugEvents(prefix string, data []byte) {
 	}
 	if m.match(monitorAPI.MessageTypeDebug, dm.Source, 0) {
 		switch m.Verbosity {
-		case INFO:
-			dm.DumpInfo(data)
-		case JSON:
-			dm.DumpJSON(prefix, m.linkMonitor)
+		//case INFO:
+		//dm.DumpInfo(data)
+		//case JSON:
+		//dm.DumpJSON(prefix, m.linkMonitor)
 		default:
 			dm.Dump(prefix, m.linkMonitor)
 		}

@@ -1259,8 +1259,13 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 		if (ipv4_hdrlen(&inner) != sizeof(*ip4))
 			return DROP_NAT_UNSUPP_PROTO;
 		*l4_off += sizeof(*ip4);
-		fallthrough;
-	};
+
+        ret = ipv4_load_l4_ports(ctx, ip4, *l4_off, CT_EGRESS, &tuple->dport, NULL);
+
+        if (IS_ERR(ret))
+            return ret;
+        return 0;
+    };
 #endif
 #endif
 	case IPPROTO_TCP:

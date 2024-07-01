@@ -2469,8 +2469,8 @@ nodeport_rev_dnat_ingress_ipv4(struct __ctx_buff *ctx, struct trace_ctx *trace,
 		trace->reason = TRACE_REASON_CT_REPLY;
 #ifdef ENABLE_DSR_EXTERNAL
         if (ct_state.dsr_external) {
-            cilium_dbg3(ctx, DBG_NODEPORT_REVERSING_DSR, 0,0,0);
-            cilium_dbg3(ctx, DBG_NODEPORT_REVERSING_DSR, 0, 0,0);
+            cilium_dbg3(ctx, DBG_NODEPORT_REVERSING_DSR, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+            cilium_dbg3(ctx, DBG_NODEPORT_REVERSING_DSR, 0, ct_state.dsr4.address, ct_state.dsr4.port << 16);
             ret = lb4_rev_dsr(ctx, l3_off, l4_off, &ct_state.dsr4, false, &tuple, has_l4_header);
         } else
 #endif
@@ -2830,19 +2830,19 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 
 #ifdef ENABLE_DSR_EXTERNAL
 		if (vip_found) {
-	        cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_VIPFOUND, 0,0,0);
-	        cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_VIPFOUND, 0, 0, 0);
+	        cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_VIPFOUND, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+	        cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_VIPFOUND, 0, 0, external_vip);
 			if (ctx_adjust_hroom(ctx, -(int)sizeof(*ip4),
 					     BPF_ADJ_ROOM_MAC,
 					     BPF_F_ADJ_ROOM_FIXED_GSO)){
 
 	            //cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_DROP_PROTO, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
-	            cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_DROP_PROTO, 0, 0, 0);
+	            cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_DROP_PROTO, 0, 0, external_vip);
 				return DROP_UNSUPP_SERVICE_PROTO;
              }
 
             //cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_MOVED_L4_OFFSET, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
-            cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_MOVED_L4_OFFSET, 0, 0, 0);
+            cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_MOVED_L4_OFFSET, 0, 0, external_vip);
 			tuple->daddr = external_vip;
 			l4_off -= sizeof(*ip4);
 		}
@@ -2924,7 +2924,7 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
 #ifdef ENABLE_DSR_EXTERNAL
             if (vip_found) {
               //cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_SETTING_NEW_CT, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
-              cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_SETTING_NEW_CT, 0, 0, 0);
+              cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_LB_SETTING_NEW_CT, 0, 0, external_vip);
             }
             ct_state.dsr_external = vip_found;
             if (ct_state.dsr_external) {
@@ -3006,24 +3006,24 @@ static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,
 
 	cilium_capture_in(ctx);
 
-	cilium_dbg3(ctx, DBG_L4_CREATE, 0,0,0);
+	cilium_dbg3(ctx, DBG_L4_CREATE, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 
 	ret = lb4_extract_tuple_and_vip(ctx, ip4, l3_off, &l4_off, &tuple, &external_vip, &vip_found);
 
-    cilium_dbg3(ctx, DBG_NODEPORT_PROCESSING, 0,0,0);
+    cilium_dbg3(ctx, DBG_NODEPORT_PROCESSING, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
     if (vip_found) {
-        cilium_dbg3(ctx, DBG_NODEPORT_PROCESSING, 0, 0, 0);
+        cilium_dbg3(ctx, DBG_NODEPORT_PROCESSING, 0, 0, external_vip);
     }
 
 	if (IS_ERR(ret)) {
 		if (ret == DROP_UNSUPP_SERVICE_PROTO) {
-            cilium_dbg3(ctx, DBG_NODEPORT_DROP_SERVICE_PROTO, 0,0,0);
+            cilium_dbg3(ctx, DBG_NODEPORT_DROP_SERVICE_PROTO, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 
 			is_svc_proto = false;
 			goto skip_service_lookup;
 		}
 		if (ret == DROP_UNKNOWN_L4) {
-            cilium_dbg3(ctx, DBG_NODEPORT_DROP_UNKNOWN_L4, 0,0,0);
+            cilium_dbg3(ctx, DBG_NODEPORT_DROP_UNKNOWN_L4, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 
 			ctx_set_xfer(ctx, XFER_PKT_NO_SVC);
 			return CTX_ACT_OK;
@@ -3035,12 +3035,12 @@ static __always_inline int nodeport_lb4(struct __ctx_buff *ctx,
 
 	svc = lb4_lookup_service(&key, false);
 	if (svc) {
-        cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_FOUND, 0,0,0);
+        cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_FOUND, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 		return nodeport_svc_lb4(ctx, &tuple, svc, &key, ip4, l3_off,
 					has_l4_header, l4_off,
 					src_sec_identity, ext_err, vip_found, external_vip);
 	} else {
-        cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_NOT_FOUND, 0,0,0);
+        cilium_dbg3(ctx, DBG_NODEPORT_SERVICE_NOT_FOUND, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 skip_service_lookup:
 #ifdef ENABLE_NAT_46X64_GATEWAY
 		if (ip4->daddr != IPV4_DIRECT_ROUTING)

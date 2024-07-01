@@ -599,7 +599,7 @@ handle_ipv4(struct __ctx_buff *ctx, __u32 secctx __maybe_unused,
  */
 #ifndef ENABLE_IPV4_FRAGMENTS
 	if (ipv4_is_fragment(ip4)) {
-        cilium_dbg3(ctx, DBG_DROP_FRAGMENT_V4, 0, 0, 0);
+        cilium_dbg3(ctx, DBG_DROP_FRAGMENT_V4, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 		return DROP_FRAG_NOSUPPORT;
 	}
 #endif
@@ -630,7 +630,7 @@ handle_ipv4(struct __ctx_buff *ctx, __u32 secctx __maybe_unused,
 			if (ret < 0 || ret == TC_ACT_REDIRECT)
 				return ret;
 		} else {
-            cilium_dbg3(ctx, DBG_HANDLE_V4_NODEPORT_SKIPPED, 0, 0, 0);
+            cilium_dbg3(ctx, DBG_HANDLE_V4_NODEPORT_SKIPPED, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
 		}
 	}
 #endif /* ENABLE_NODEPORT */
@@ -1189,7 +1189,7 @@ do_netdev(struct __ctx_buff *ctx, __u16 proto, const bool from_host)
 		 * arrived with the header not being not in the linear data.
 		 */
 		if (!revalidate_data_pull(ctx, &data, &data_end, &ip4)){
-            cilium_dbg3(ctx, DBG_DROP_REVALIDATE, 0, 0, 0);
+            cilium_dbg3(ctx, DBG_DROP_REVALIDATE, 0, 0, 0 << 16 | proto);
 
 			return send_drop_notify_error(ctx, identity, DROP_INVALID,
 						      CTX_ACT_DROP, METRIC_INGRESS);
@@ -1208,7 +1208,7 @@ do_netdev(struct __ctx_buff *ctx, __u16 proto, const bool from_host)
 # endif /* defined(ENABLE_HOST_FIREWALL) && !defined(ENABLE_MASQUERADE_IPV4) */
 		}
 
-        cilium_dbg3(ctx, DBG_TAIL_INVOKED, 0, 0, 0);
+        cilium_dbg3(ctx, DBG_TAIL_INVOKED, ip4->saddr, ip4->daddr, 0 << 16 | proto);
 		ret = tail_call_internal(ctx, from_host ? CILIUM_CALL_IPV4_FROM_HOST :
 							  CILIUM_CALL_IPV4_FROM_NETDEV,
 					 &ext_err);
@@ -1270,7 +1270,7 @@ handle_netdev(struct __ctx_buff *ctx, const bool from_host)
 				  TRACE_IFINDEX_UNKNOWN, TRACE_REASON_UNKNOWN, 0);
 		/* Pass unknown traffic to the stack */
 
-        cilium_dbg3(ctx, DBG_SKIP_UNKNOWN_PROTO, 0, 0, 0);
+        cilium_dbg3(ctx, DBG_SKIP_UNKNOWN_PROTO, 0, 0, 0 << 16 | proto);
 		return CTX_ACT_OK;
 #endif /* ENABLE_HOST_FIREWALL */
 	}

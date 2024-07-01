@@ -1244,8 +1244,8 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 		 */
 		ctx_load_bytes(ctx, *l4_off, &inner, sizeof(inner));
 
-        cilium_dbg3(ctx, DBG_LB_FOUND_IPIP, 0,0,0);
-        cilium_dbg3(ctx, DBG_LB_FOUND_IPIP, 0,0,0);
+        cilium_dbg3(ctx, DBG_LB_FOUND_IPIP, ip4->saddr, ip4->daddr, 0 << 16 | ip4->protocol);
+        cilium_dbg3(ctx, DBG_LB_FOUND_IPIP, inner.saddr, inner.daddr, 1 << 16 | inner.protocol);
 
 		tuple->nexthdr = inner.protocol;
 		tuple->saddr = inner.saddr;
@@ -1253,8 +1253,8 @@ lb4_extract_tuple_and_vip(struct __ctx_buff *ctx, struct iphdr *ip4,
 			*external_vip = inner.daddr;
 			*vip_found = true;
 
-            cilium_dbg3(ctx, DBG_LB_FOUND_EXTERNALVIP, 0,0,0);
-            cilium_dbg3(ctx, DBG_LB_FOUND_EXTERNALVIP, 0, 0, 0);
+            cilium_dbg3(ctx, DBG_LB_FOUND_EXTERNALVIP, inner.saddr, inner.daddr, 0 << 16 | inner.protocol);
+            cilium_dbg3(ctx, DBG_LB_FOUND_EXTERNALVIP, 0, 0, *external_vip);
 		}
 		if (ipv4_hdrlen(&inner) != sizeof(*ip4))
 			return DROP_NAT_UNSUPP_PROTO;

@@ -1341,7 +1341,7 @@ static __always_inline int nodeport_svc_lb6(struct __ctx_buff *ctx,
 #ifdef ENABLE_DSR_EXTERNAL
             ct_state.dsr_external = vip_found;
             if (ct_state.dsr_external) {
-                ipv6_addr_copy(&ct_state.dsr6.address, &tuple->daddr);
+                ipv6_addr_copy(&ct_state.dsr6.address, external_vip);
                 ct_state.dsr6.port = key->dport;
             }
 #else
@@ -2928,7 +2928,7 @@ static __always_inline int nodeport_svc_lb4(struct __ctx_buff *ctx,
             }
             ct_state.dsr_external = vip_found;
             if (ct_state.dsr_external) {
-                ct_state.dsr4.address = tuple->daddr;
+                ct_state.dsr4.address = external_vip;
                 ct_state.dsr4.port = key->dport;
             }
 #else

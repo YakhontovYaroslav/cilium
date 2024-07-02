@@ -480,13 +480,13 @@ func (n *DebugMsg) Message(linkMonitor getters.LinkGetter) string {
 		}
 	case DBG_LB_FOUND_EXTERNALVIP:
 		if n.Arg1 == 0 {
-			return fmt.Sprintf("Processed inner IPIP - extracted %s VIP", ip4Str(n.Arg2))
+			return fmt.Sprintf("Processed inner IPIP - extracted %s VIP", ip4Str(n.Arg3))
 		} else {
 			return fmt.Sprintf("Processed inner IPIP %s", infoIPv4(n))
 		}
 	case DBG_NODEPORT_PROCESSING:
 		if n.Arg1 == 0 {
-			return fmt.Sprintf("Processed NodePort packet extracted %s VIP", ip4Str(n.Arg2))
+			return fmt.Sprintf("Processed NodePort packet extracted %s VIP", ip4Str(n.Arg3))
 		} else {
 			return fmt.Sprintf("Processed NodePort packet %s", infoIPv4(n))
 		}

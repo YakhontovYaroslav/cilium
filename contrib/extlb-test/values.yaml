@@ -1,0 +1,22 @@
+# Helm values for the external L4LB rig. k8sServiceHost and image.override are
+# passed on the command line by up.sh.
+kubeProxyReplacement: true
+routingMode: native
+autoDirectNodeRoutes: true
+ipv4NativeRoutingCIDR: 10.244.0.0/16
+ipam:
+  mode: kubernetes
+bgpControlPlane:
+  enabled: true
+# Cilium's own DSR dispatch for the eTP=Cluster forwarding hop. Geneve carries
+# the service port, so port != targetPort works on that hop; IPIP would not.
+loadBalancer:
+  mode: dsr
+  dsrDispatch: geneve
+tunnelProtocol: geneve
+extraConfig:
+  enable-ipip-termination: "true"
+hubble:
+  enabled: false
+operator:
+  replicas: 1

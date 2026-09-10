@@ -1,0 +1,63 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      # One pod per node, so eTP=Local announces from two nodes and eTP=Cluster
+      # has a remote backend to forward to.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: web
+      containers:
+        - name: whoami
+          image: traefik/whoami:v1.10.4
+          args: ["--port=8080"]           # NOT 80: the service port must be translated
+          ports:
+            - containerPort: 8080
+---
+# Katran's VIP. The inner packet is addressed here. A frontend only: never
+# announced by the cluster, it belongs to the load balancer.
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-vip
+spec:
+  selector:
+    app: web
+  externalIPs:
+    - 10.99.100.2
+  externalTrafficPolicy: Local
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# The real. Katran encapsulates to this address; the cluster allocates it from
+# the LB IPAM pool and announces it via BGP from backend-holding nodes.
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-real
+  labels:
+    announce: "yes"
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+  externalTrafficPolicy: Local
+  ports:
+    - port: 80
+      targetPort: 8080

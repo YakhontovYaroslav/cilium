@@ -1,0 +1,60 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: reals
+spec:
+  blocks:
+    - cidr: "10.99.99.0/24"
+  serviceSelector:
+    matchLabels:
+      announce: "yes"
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: fabric
+spec:
+  nodeSelector:
+    matchLabels:
+      bgp: enabled
+  bgpInstances:
+    - name: "65001"
+      localASN: 65001
+      peers:
+        - name: frr
+          peerASN: 65000
+          peerAddress: 172.20.9.1
+          peerConfigRef:
+            name: frr
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: frr
+spec:
+  timers:
+    holdTimeSeconds: 9
+    keepAliveTimeSeconds: 3
+  families:
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: reals
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: reals
+  labels:
+    advertise: reals
+spec:
+  advertisements:
+    - advertisementType: Service
+      service:
+        addresses:
+          - LoadBalancerIP
+      selector:
+        matchLabels:
+          announce: "yes"
